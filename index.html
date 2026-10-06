@@ -510,6 +510,10 @@
           <td><svg class="key dotted" viewBox="0 0 32 8" aria-hidden="true"><line x1="0" y1="4" x2="32" y2="4"/></svg></td>
           <td id="legend-dotted">Үзік сызық: ру атауынан белгілі ең көне аталарға</td>
         </tr>
+        <tr>
+          <td></td>
+          <td id="legend-names">Латынша Qataghan, сондай-ақ Katagan және Katagun.</td>
+        </tr>
       </tbody>
     </table>
     <div class="canvas" id="canvas">
@@ -545,16 +549,19 @@
         label: "Legend",
         solid: "Solid line: father to son",
         dotted: "Dotted line: from the tribe to the oldest known ancestors",
+        names: "Qataghan is also transliterated as Katagan and Katagun.",
       },
       kz: {
         label: "Түсініктеме",
         solid: "Тұтас сызық: әкеден балаға",
         dotted: "Үзік сызық: ру атауынан белгілі ең көне аталарға",
+        names: "Латынша Qataghan, сондай-ақ Katagan және Katagun.",
       },
       ru: {
         label: "Легенда",
         solid: "Сплошная линия: от отца к сыну",
         dotted: "Пунктир: от названия рода к древнейшим известным предкам",
+        names: "Латиницей Qataghan, также Katagan и Katagun.",
       },
     };
     const TAMGA = { en: "Tamga", kz: "Тамға", ru: "Тамга" };
@@ -927,6 +934,7 @@
       document.getElementById("legend").setAttribute("aria-label", LEGEND[lang].label);
       document.getElementById("legend-solid").textContent = LEGEND[lang].solid;
       document.getElementById("legend-dotted").textContent = LEGEND[lang].dotted;
+      document.getElementById("legend-names").textContent = LEGEND[lang].names;
       diagram.setAttribute("aria-label", SUBTITLE[lang]);
       updateToolLabels(lang);
       for (const button of document.querySelectorAll(".langs button")) {
