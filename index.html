@@ -437,26 +437,135 @@
       white-space: pre-wrap;
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 860px) {
+      body { overflow-x: clip; }
+
       .page {
+        display: flex;
+        flex-direction: column;
         width: auto;
-        margin: 12px;
-        padding: 22px 16px 18px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        margin: 0;
+        padding:
+          max(12px, env(safe-area-inset-top))
+          max(14px, env(safe-area-inset-right))
+          max(10px, env(safe-area-inset-bottom))
+          max(14px, env(safe-area-inset-left));
+        box-shadow: none;
       }
 
       header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .masthead {
+        font-size: clamp(34px, 11vw, 52px);
+      }
+
+      .eleven {
+        margin-top: 6px;
+        font-size: 18px;
       }
 
       .header-tools {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 4px 10px;
         width: 100%;
-        justify-content: space-between;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .search {
+        flex: 1 0 100%;
+        min-width: 0;
       }
 
       .search input {
-        width: min(168px, 46vw);
+        width: 100%;
+        min-height: 40px;
+        font-size: 16px;
       }
+
+      .langs { margin-right: auto; }
+
+      .langs button {
+        padding: 10px 8px;
+        letter-spacing: 0.08em;
+      }
+
+      .themes button,
+      .github {
+        width: 40px;
+        height: 40px;
+      }
+
+      .legend {
+        width: 100%;
+        font-size: 13px;
+      }
+
+      .legend td:last-child {
+        overflow-wrap: anywhere;
+      }
+
+      .canvas {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        margin-top: 12px;
+      }
+
+      .header-tools .tools,
+      .canvas:fullscreen .tools,
+      .canvas.is-overlay .tools {
+        position: static;
+        top: auto;
+        right: auto;
+        z-index: auto;
+        align-self: flex-end;
+        margin: 0;
+      }
+
+      .header-tools .tools {
+        flex: 1 0 100%;
+        justify-content: flex-end;
+        padding: 0;
+        background: transparent;
+        border: 0;
+      }
+
+      .diagram {
+        flex: 1 1 auto;
+        max-height: none;
+        min-height: 240px;
+        height: calc(100dvh - 300px);
+        overscroll-behavior: contain;
+      }
+
+      .minimap {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        align-self: flex-end;
+        flex: none;
+        margin-top: 8px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .themes button,
+      .github {
+        width: 36px;
+        height: 36px;
+      }
+
+      .langs button { padding: 8px 6px; }
     }
   </style>
 </head>
@@ -610,10 +719,20 @@
     const MIN_SCALE = 0.5;
     const MAX_SCALE = 2.5;
     let scale = 1;
+    let zoomTouched = false;
 
     const diagram = document.getElementById("diagram");
     const stage = document.getElementById("stage");
     const canvas = document.getElementById("canvas");
+    const tools = document.getElementById("tools");
+    const headerTools = document.querySelector(".header-tools");
+    const narrow = matchMedia("(max-width: 860px)");
+
+    function placeTools() {
+      const fullscreen = document.fullscreenElement === canvas || canvas.classList.contains("is-overlay");
+      if (narrow.matches && !fullscreen) headerTools.appendChild(tools);
+      else canvas.insertBefore(tools, diagram);
+    }
     const error = document.getElementById("error");
     let renderSeq = 0;
 
@@ -838,10 +957,19 @@
       clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
       clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
       clone.querySelectorAll(".label, .edgeLabel, foreignObject").forEach((el) => el.remove());
-      const box = svg.viewBox.baseVal;
-      frame.style.height = `${Math.round(176 * box.height / box.width)}px`;
       content.replaceChildren(clone);
+      sizeMinimap();
       updateMinimap();
+    }
+
+    function sizeMinimap() {
+      const frame = document.getElementById("minimap");
+      const svg = stage.querySelector("svg");
+      if (!frame || !svg || !svg.viewBox) return;
+      const box = svg.viewBox.baseVal;
+      const mapW = matchMedia("(max-width: 860px)").matches ? 148 : 176;
+      frame.style.width = `${mapW}px`;
+      frame.style.height = `${Math.round(mapW * box.height / box.width)}px`;
     }
 
     function updateMinimap() {
@@ -898,6 +1026,27 @@
       diagram.scrollTop = Math.max(0, rootRect.top - diagramRect.top + diagram.scrollTop - 28);
     }
 
+    function openingSpan() {
+      const ids = [SOURCE.root, ...SOURCE.edges.filter((edge) => edge[0] === SOURCE.root).map((edge) => edge[1])];
+      const rects = ids.map((id) => drawnNode(id)).filter(Boolean).map((node) => node.getBoundingClientRect());
+      if (rects.length < 2 || scale <= 0) return 0;
+      const left = Math.min(...rects.map((rect) => rect.left));
+      const right = Math.max(...rects.map((rect) => rect.right));
+      return (right - left) / scale;
+    }
+
+    function fitOpening(name) {
+      const span = openingSpan();
+      const room = diagram.clientWidth - 36;
+      if (!span || room < 80) {
+        centerRoot(name);
+        return;
+      }
+      scale = Math.min(1, Math.max(MIN_SCALE, room / span));
+      applyZoom();
+      centerRoot(name);
+    }
+
     function setScale(next, name) {
       const prev = scale;
       scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next));
@@ -914,6 +1063,7 @@
       if (document.fullscreenElement || canvas.classList.contains("is-overlay")) {
         canvas.classList.remove("is-overlay");
         if (document.fullscreenElement) await document.exitFullscreen();
+        placeTools();
         return;
       }
       try {
@@ -921,6 +1071,7 @@
       } catch {
         canvas.classList.add("is-overlay");
       }
+      placeTools();
     }
 
     async function show(lang) {
@@ -953,7 +1104,8 @@
         applyZoom();
         if (document.getElementById("search").value.trim()) applySearch(true);
         else {
-          centerRoot(view.name);
+          if (!zoomTouched) fitOpening(view.name);
+          else centerRoot(view.name);
           mountMinimap();
         }
       } catch (err) {
@@ -999,9 +1151,16 @@
       const button = event.target.closest("button[data-action]");
       if (!button) return;
       const lang = document.documentElement.lang === "en" ? "en" : document.documentElement.lang === "ru" ? "ru" : "kz";
-      if (button.dataset.action === "in") setScale(scale * 1.25);
-      if (button.dataset.action === "out") setScale(scale / 1.25);
+      if (button.dataset.action === "in") {
+        zoomTouched = true;
+        setScale(scale * 1.25);
+      }
+      if (button.dataset.action === "out") {
+        zoomTouched = true;
+        setScale(scale / 1.25);
+      }
       if (button.dataset.action === "reset") {
+        zoomTouched = true;
         setScale(1);
         const query = document.getElementById("search").value.trim();
         const hit = query && hits[hitIndex] && drawnNode(hits[hitIndex].id);
@@ -1013,12 +1172,20 @@
 
     document.addEventListener("fullscreenchange", () => {
       const lang = document.documentElement.lang === "en" ? "en" : document.documentElement.lang === "ru" ? "ru" : "kz";
+      placeTools();
       updateToolLabels(lang);
       updateMinimap();
     });
 
     diagram.addEventListener("scroll", updateMinimap, { passive: true });
-    window.addEventListener("resize", updateMinimap);
+    window.addEventListener("resize", () => {
+      placeTools();
+      if (!zoomTouched && stage.querySelector("svg")) fitOpening(document.getElementById("name").textContent);
+      sizeMinimap();
+      updateMinimap();
+    });
+    narrow.addEventListener("change", placeTools);
+    placeTools();
 
     const minimap = document.getElementById("minimap");
     minimap.addEventListener("pointerdown", (event) => {
