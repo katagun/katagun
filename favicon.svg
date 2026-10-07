@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <style>
+    path {
+      fill: none;
+      stroke: #1c2744;
+      stroke-width: 4.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #f4ecdc; }
+    }
+  </style>
+  <path d="M40 4V70"/>
+  <path d="M8 42A32 32 0 0 0 72 42"/>
+</svg>
